@@ -1,0 +1,2 @@
+F:\codebase\MarkdownOCR\bin\Release\net9.0-windows\win-x64\publish\MarkdownOCR.pdb
+F:\codebase\MarkdownOCR\bin\Release\net9.0-windows\win-x64\publish\MarkdownOCR.exe

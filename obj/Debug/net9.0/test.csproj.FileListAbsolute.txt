@@ -1,0 +1,5 @@
+F:\codebase\MarkdownOCR\obj\Debug\net9.0\test.csproj.AssemblyReference.cache
+F:\codebase\MarkdownOCR\obj\Debug\net9.0\test.GeneratedMSBuildEditorConfig.editorconfig
+F:\codebase\MarkdownOCR\obj\Debug\net9.0\test.AssemblyInfoInputs.cache
+F:\codebase\MarkdownOCR\obj\Debug\net9.0\test.AssemblyInfo.cs
+F:\codebase\MarkdownOCR\obj\Debug\net9.0\test.csproj.CoreCompileInputs.cache
