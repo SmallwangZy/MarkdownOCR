@@ -1,6 +1,8 @@
 # Build results
 bin/
 obj/
+publish/
+*.exe
 
 # Visual Studio
 .vs/
