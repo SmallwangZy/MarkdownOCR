@@ -25,8 +25,8 @@ namespace MarkdownOCR
         private const int MinWindowHeight = 250;
         private const int MaxWindowWidth = 800;
         private const int MaxWindowHeight = 600;
-        private const int ButtonWidth = 45;
-        private const int ButtonHeight = 45;
+        private const int ButtonWidth = 35;
+        private const int ButtonHeight = 35;
         private new const int Padding = 12;
         private const int ButtonSpacing = 15;
         private const int TimeLabelHeight = 25;
@@ -68,7 +68,7 @@ namespace MarkdownOCR
             this.Font = new Font("微软雅黑", 9F);
             
             // 计算文本框和按钮位置
-            int textBoxWidth = windowSize.Width - ButtonWidth - Padding * 3;
+            int textBoxWidth = windowSize.Width - ButtonWidth - Padding * 4;
             int textBoxHeight = windowSize.Height - Padding * 2;
             
             // 创建时间标签
@@ -171,6 +171,9 @@ namespace MarkdownOCR
             if (string.IsNullOrEmpty(content))
                 return new Size(MinWindowWidth, MinWindowHeight);
             
+            // 获取屏幕工作区域
+            Rectangle workingArea = Screen.PrimaryScreen?.WorkingArea ?? Screen.AllScreens[0].WorkingArea;
+            
             // 计算文本行数和最长行字符数
             string[] lines = content.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
             int lineCount = Math.Max(lines.Length, 1);
@@ -179,13 +182,58 @@ namespace MarkdownOCR
             // 基于字符数估算宽度（每个字符约8像素，中文字符约16像素）
             int estimatedWidth = (int)(maxLineLength * 12) + ButtonWidth + Padding * 4;
             
-            // 基于行数估算高度（每行约25像素），考虑时间标签的高度
-            int timeLabelSpace = _processingTimeSeconds > 0 ? TimeLabelHeight + 5 : 0;
-            int estimatedHeight = lineCount * 25 + Padding * 3 + timeLabelSpace;
+            // 更精确的高度计算：考虑文本换行和实际渲染
+            // 计算在给定宽度下的实际行数（考虑自动换行）
+            int contentWidth = estimatedWidth - ButtonWidth - Padding * 4;
+            int actualLineCount = 0;
             
-            // 应用最小和最大限制
-            int finalWidth = Math.Max(MinWindowWidth, Math.Min(MaxWindowWidth, estimatedWidth));
-            int finalHeight = Math.Max(MinWindowHeight, Math.Min(MaxWindowHeight, estimatedHeight));
+            foreach (string line in lines)
+            {
+                if (string.IsNullOrEmpty(line))
+                {
+                    actualLineCount += 1;
+                }
+                else
+                {
+                    // 估算该行在给定宽度下会占用多少行
+                    int linePixelWidth = line.Length * 12; // 每个字符约12像素
+                    int linesForThisContent = Math.Max(1, (int)Math.Ceiling((double)linePixelWidth / contentWidth));
+                    actualLineCount += linesForThisContent;
+                }
+            }
+            
+            // 基于实际行数估算高度（每行约22像素），考虑时间标签的高度
+            int timeLabelSpace = _processingTimeSeconds > 0 ? TimeLabelHeight + 5 : 0;
+            int estimatedHeight = actualLineCount * 22 + Padding * 3 + timeLabelSpace + 50; // 额外50像素缓冲
+            
+            // 参考截图区域尺寸进行智能调整
+            // 悬浮窗应该能够完整显示文本，同时参考截图区域大小
+            
+            // 宽度：优先保证文本显示，但不超过截图区域的1.8倍或屏幕的80%
+            int maxWidthFromCapture = Math.Max(_sourceRect.Width, (int)(_sourceRect.Width * 1.8));
+            int maxWidthFromScreen = (int)(workingArea.Width * 0.8);
+            int maxAllowedWidth = Math.Min(maxWidthFromCapture, maxWidthFromScreen);
+            
+            // 高度：优先保证文本完整显示，参考截图区域但允许更大的灵活性
+            int maxHeightFromCapture = Math.Max(_sourceRect.Height, (int)(_sourceRect.Height * 2.0));
+            int maxHeightFromScreen = (int)(workingArea.Height * 0.8);
+            int maxAllowedHeight = Math.Min(maxHeightFromCapture, maxHeightFromScreen);
+            
+            // 应用所有限制条件，优先保证文本完整显示
+            int finalWidth = Math.Max(MinWindowWidth, 
+                Math.Min(Math.Min(MaxWindowWidth, Math.Max(estimatedWidth, maxAllowedWidth)), maxWidthFromScreen));
+            int finalHeight = Math.Max(MinWindowHeight, 
+                Math.Min(Math.Min(MaxWindowHeight, Math.Max(estimatedHeight, maxAllowedHeight)), maxHeightFromScreen));
+            
+            // 如果估算的尺寸超过了基于截图的限制，优先保证文本显示
+            if (estimatedWidth > maxAllowedWidth)
+            {
+                finalWidth = Math.Min(estimatedWidth, maxWidthFromScreen);
+            }
+            if (estimatedHeight > maxAllowedHeight)
+            {
+                finalHeight = Math.Min(estimatedHeight, maxHeightFromScreen);
+            }
             
             return new Size(finalWidth, finalHeight);
         }
@@ -328,8 +376,11 @@ namespace MarkdownOCR
                         var timer = new System.Windows.Forms.Timer { Interval = 1000 };
                         timer.Tick += (s, e) =>
                         {
-                            _copyButton.BackColor = Color.FromArgb(0, 123, 255);
-                            _copyButton.Text = "📋";
+                            if (_copyButton != null)
+                            {
+                                _copyButton.BackColor = Color.FromArgb(0, 123, 255);
+                                _copyButton.Text = "📋";
+                            }
                             timer.Stop();
                             timer.Dispose();
                         };
@@ -351,7 +402,7 @@ namespace MarkdownOCR
         private void SetWindowPosition()
         {
             // 获取屏幕工作区域
-            Rectangle workingArea = Screen.PrimaryScreen.WorkingArea;
+            Rectangle workingArea = Screen.PrimaryScreen?.WorkingArea ?? Screen.AllScreens[0].WorkingArea;
             
             // 计算悬浮窗的理想位置（截图区域右下角）
             int x = _sourceRect.Right + 10;
